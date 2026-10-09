@@ -1,0 +1,207 @@
+{
+ "version": 0.6,
+ "generator": "Overpass API 0.7.62.4 2390de5a",
+ "osm3s": {
+  "timestamp_osm_base": "2026-10-08T14:44:57Z",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+ },
+ "elements": [
+  {
+   "type": "node",
+   "id": 1019548226,
+   "lat": 41.7593417,
+   "lon": 123.4099725,
+   "tags": {
+    "barrier": "gate",
+    "name": "南门"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1759664087,
+   "lat": 41.7572998,
+   "lon": 123.4059844,
+   "tags": {
+    "barrier": "gate"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1800571301,
+   "lat": 41.7699864,
+   "lon": 123.4137046,
+   "tags": {
+    "barrier": "gate"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2575841630,
+   "lat": 41.7603567,
+   "lon": 123.405975,
+   "tags": {
+    "name": "东北大学科技交流中心",
+    "tourism": "hotel"
+   }
+  },
+  {
+   "type": "node",
+   "id": 5030984106,
+   "lat": 41.7637955,
+   "lon": 123.4187292,
+   "tags": {
+    "barrier": "gate",
+    "bicycle": "no",
+    "foot": "yes",
+    "name": "东门"
+   }
+  },
+  {
+   "type": "node",
+   "id": 12740809725,
+   "lat": 41.759981,
+   "lon": 123.4098137,
+   "tags": {
+    "amenity": "university",
+    "name": "综合实验楼"
+   }
+  },
+  {
+   "type": "node",
+   "id": 13294228719,
+   "lat": 41.7590943,
+   "lon": 123.4101488,
+   "tags": {
+    "bus": "yes",
+    "highway": "bus_stop",
+    "name": "东北大学南湖校区",
+    "public_transport": "platform"
+   }
+  },
+  {
+   "type": "way",
+   "id": 53573481,
+   "center": {
+    "lat": 41.7633693,
+    "lon": 123.4123662
+   },
+   "tags": {
+    "addr:city": "沈阳市",
+    "addr:district": "和平区",
+    "addr:housenumber": "11号",
+    "addr:postcode": "110819",
+    "addr:province": "辽宁省",
+    "addr:street": "文化路三巷",
+    "amenity": "university",
+    "barrier": "wall",
+    "education": "university",
+    "name": "东北大学",
+    "name:en": "Northeastern University (China)",
+    "name:ja": "東北大学",
+    "name:ko": "동북대학",
+    "name:ru": "Северо-Восточный университет",
+    "short_name": "NEU",
+    "website": "https://www.neu.edu.cn/",
+    "wikidata": "Q1363559",
+    "wikipedia": "en:Northeastern University (China)"
+   }
+  },
+  {
+   "type": "way",
+   "id": 87664775,
+   "center": {
+    "lat": 41.7652645,
+    "lon": 123.4171241
+   },
+   "tags": {
+    "leisure": "stadium",
+    "name": "东北大学体育场",
+    "name:en": "Shenyang Urban Construction University Stadium"
+   }
+  },
+  {
+   "type": "way",
+   "id": 556665307,
+   "center": {
+    "lat": 41.7660451,
+    "lon": 123.423512
+   },
+   "tags": {
+    "addr:full": "辽宁省沈阳市和平区三好街61号",
+    "addr:postcode": "110818",
+    "alt_name": "沈阳音乐学院(校本部);沈阳音乐学院(三好校区)",
+    "amenity": "university",
+    "name": "沈阳音乐学院",
+    "website": "http://www.sycm.com.cn/",
+    "wikidata": "Q6119482"
+   }
+  },
+  {
+   "type": "way",
+   "id": 567465558,
+   "center": {
+    "lat": 41.7664746,
+    "lon": 123.4406611
+   },
+   "tags": {
+    "addr:city": "沈阳",
+    "addr:housenumber": "103号",
+    "addr:postcode": "110016",
+    "addr:street": "文化路",
+    "amenity": "university",
+    "name": "沈阳药科大学"
+   }
+  },
+  {
+   "type": "relation",
+   "id": 19816831,
+   "center": {
+    "lat": 41.7024594,
+    "lon": 123.4000999
+   },
+   "tags": {
+    "from": "东北大学浑南校区",
+    "name": "139路：东北大学浑南校区 -> 东北大学南湖校区",
+    "network": "沈阳公交",
+    "opening_hours": "Mo-Su 06:00-18:00",
+    "operator": "沈阳客运集团有限公司沈苏公共汽车分公司",
+    "ref": "139",
+    "route": "bus",
+    "to": "东北大学南湖校区",
+    "type": "route"
+   }
+  },
+  {
+   "type": "relation",
+   "id": 19816832,
+   "center": {
+    "lat": 41.7023835,
+    "lon": 123.3996666
+   },
+   "tags": {
+    "from": "东北大学南湖校区",
+    "name": "139路：东北大学南湖校区 -> 东北大学浑南校区",
+    "network": "沈阳公交",
+    "opening_hours": "Mo-Su 07:00-19:00",
+    "operator": "沈阳客运集团有限公司沈苏公共汽车分公司",
+    "ref": "139",
+    "route": "bus",
+    "to": "东北大学浑南校区",
+    "type": "route"
+   }
+  },
+  {
+   "type": "relation",
+   "id": 19816859,
+   "center": {
+    "lat": 41.7590943,
+    "lon": 123.4101488
+   },
+   "tags": {
+    "name": "东北大学南湖校区",
+    "public_transport": "stop_area",
+    "type": "public_transport"
+   }
+  }
+ ]
+}

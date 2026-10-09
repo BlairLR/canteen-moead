@@ -1,0 +1,36 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- 过程备份文件（Git 历史即备份，无需入库） ---
+*.bak
+*.orig
+*~
+
+# --- 日志/临时 ---
+*.log
+.tmp/
+*.tmp
+
+# --- 实验产物保留策略 ---
+# 保留 output/ 下的重要实验报告、JSON 结果、可视化图、npy 数据
+# （不忽略 output 整体；以下仅忽略可再生的中间/临时产物）
+output/**/__pycache__/

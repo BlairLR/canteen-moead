@@ -1,0 +1,97 @@
+{
+  "campus": {
+    "name": "东北大学南湖校区",
+    "address": "辽宁省沈阳市和平区文化路三号巷11号",
+    "data_file": "data/nanhu_points.csv",
+    "research_file": "nanhu_coordinate_research.md",
+    "map_base_file": "data/nanhu_campus_map.jpg",
+    "boundary_file": "data/nanhu_boundary.md"
+  },
+  "official_gate_anchors": [
+    {
+      "id": "GATE-S",
+      "name": "南门",
+      "latitude": 41.759173,
+      "longitude": 123.409959,
+      "coordinate_system": "WGS-84",
+      "source": "上层提供正式锚点（2026-10-08）",
+      "cross_check": "OSM node/1019548226 差 19m；高德 GCJ-02 候选经 eviltransform 转换差 0.8m",
+      "confidence": "high",
+      "map_pixel_est": [408, 648]
+    },
+    {
+      "id": "GATE-W",
+      "name": "西门",
+      "latitude": 41.763915,
+      "longitude": 123.405851,
+      "coordinate_system": "WGS-84",
+      "source": "上层提供正式锚点（2026-10-08）",
+      "cross_check": "高德 GCJ-02 候选经 eviltransform 转换差 0.2m；OSM 无名西门级 gate 节点经度吻合",
+      "confidence": "high",
+      "map_pixel_est": [172, 325]
+    },
+    {
+      "id": "GATE-E",
+      "name": "东门",
+      "latitude": 41.763453,
+      "longitude": 123.419148,
+      "coordinate_system": "WGS-84",
+      "source": "上层提供正式锚点（2026-10-08）",
+      "cross_check": "OSM node/5030984106 差 52m",
+      "confidence": "high",
+      "map_pixel_est": [855, 325]
+    },
+    {
+      "id": "GATE-N",
+      "name": "北门",
+      "latitude": 41.767916,
+      "longitude": 123.413592,
+      "coordinate_system": "WGS-84",
+      "source": "上层提供正式锚点（2026-10-08）",
+      "cross_check": "OSM 无名北侧 gate 节点 (41.7699864,123.4137046) 与本锚点差约 231m——可能为不同门（主北门 vs 教工门），待实地核对",
+      "confidence": "medium-high",
+      "map_pixel_est": [568, 100]
+    }
+  ],
+  "auxiliary_check_points": [
+    {"id": "AUX-YISHE", "name": "一舍（校验）", "latitude": 41.760656, "longitude": 123.413818, "note": "与 C01 相距 46m，验证 C01 定位"},
+    {"id": "AUX-ERSHE", "name": "二舍（校验）", "latitude": 41.760620, "longitude": 123.412308, "note": "与 C02 相距 51m，验证 C02 定位"},
+    {"id": "AUX-SHISHE", "name": "十舍（校验）", "latitude": 41.761856, "longitude": 123.406278, "note": "与 C04 相距 118m，验证学生城区域定位"}
+  ],
+  "superseded_anchors": [
+    {
+      "id": "REF-CENTER",
+      "name": "校区中心（公开地图参考）",
+      "latitude": 41.765295,
+      "longitude": 123.418444,
+      "coordinate_system": "GCJ-02（推断，源自高德系公开地图）",
+      "notes": "已被四门正式锚点取代；如需使用必须先做 GCJ-02→WGS-84 转换"
+    },
+    {
+      "id": "REF-SOUTHGATE-OLD",
+      "name": "南门（高德 GCJ-02 候选）",
+      "latitude": 41.761609,
+      "longitude": 123.416105,
+      "coordinate_system": "GCJ-02",
+      "notes": "经 eviltransform 转换后与正式南门锚点差 0.8m，已由 GATE-S 取代"
+    }
+  ],
+  "coordinate_baseline": {
+    "version": "A3",
+    "date": "2026-10-08",
+    "notes": "7 个模型点整组更新（旧坐标废弃：旧 D08 落于北门以北 505m、旧 C01 落于地图东缘外 447m，与地图和 OSM 均矛盾）；坐标系统一 WGS-84"
+  },
+  "campus_bounds": {
+    "status": "ok",
+    "kind": "provisional",
+    "decision": "A2（历史）：7 点范围 ±150m 框（模型当前仍使用，随点位自动更新）；A3 草案：基于四门配准的地图轮廓多边形（见 data/nanhu_boundary.md），尚未接入模型",
+    "notes": "A3 为工程近似边界，非测绘级；接入模型需另行确认"
+  },
+  "cost_field": {
+    "status": "ok",
+    "kind": "provisional-synthetic",
+    "decision": "B2（用户批准）：沿用合成高斯成本场 cost_base=80 + 两个 Gaussian hotspots",
+    "rule": "热点1=7 点收口质心（活动质心），热点2=热点1 关于搜索框中心的镜像点；程序化生成于 src/nanhu_campus.py build_model()",
+    "notes": "不是真实土地成本数据；一切报告必须标注 provisional/synthetic"
+  }
+}
