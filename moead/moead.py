@@ -30,7 +30,7 @@ class MOEAD:
         集中配置（见 moead/config.py）。
     evaluate_fn : callable
         目标函数：输入 (k, 2) 决策变量矩阵，返回 (k, 3) 目标值矩阵
-        （本项目中即 src/campus_model.py 的 evaluate）。
+        （本项目中即 src/nanhu_campus.py 的 evaluate）。
     """
 
     def __init__(self, cfg: MOEADConfig, evaluate_fn):

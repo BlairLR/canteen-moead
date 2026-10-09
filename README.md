@@ -4,51 +4,34 @@
 
 ## 数据版本
 
-本仓库包含两个版本的实验数据和对应的入口：
-
-| 模型 | 数据源 | 需求点 | 竞争点 | 搜索空间 | 使用场景 |
-|------|--------|--------|--------|---------|---------|
-| **南湖 21 点模型**（当前主模型） | `data/nanhu_points.csv`（WGS-84 坐标，上层收口） | 17 个（D01-D10 宿舍 + T01-T07 教学区） | 4 个（C01-C04） | A3 Polygon（高德底图描边 + 四门配准，工程近似 ±20-40m，用户已批准） | 替代旧版虚拟校园的正式模型 |
-| **旧版虚拟校园**（baseline） | `src/campus_model.py` 内硬编码坐标 | 约 6 个宿舍点（等权） | 3 个已有食堂 | `[0,1000] × [0,700]` 矩形校园 | 第一版学习/验证原型 |
+**南湖 21 点模型**（当前主模型）
+- 数据源：`data/nanhu_points.csv`（WGS-84 坐标，上层收口）
+- 需求点：17 个（D01-D10 宿舍 + T01-T07 教学区）
+- 竞争点：4 个（C01-C04）
+- 搜索空间：A3 Polygon（高德底图描边 + 四门配准，工程近似 ±20-40m，用户已批准）
 
 ## 入口与用法
 
 在项目根目录 `canteen-moead/` 下执行：
 
 ```bash
-# ── 默认：南湖 21 点快速实验（演示） ──
-python main.py                          # 5 种子 × 100 代 → output/moead_nanhu_fast/demo_5x100/
+# ── 默认（优化 + 可视化） ──
+python main.py                              # 91 子问题 × 200 代 × seed 42 → output/moead_nanhu/
 
-# ── 入口参数 ──
-python main.py --quick                  # 1 种子 × 50 代快速验证 → output/moead_nanhu_fast/quick_1x50/
-python main.py --demo                   # 同默认，5×100 代
-python main.py --nanhu                  # 南湖 10 种子 × 200 代完整实验 → output/moead_nanhu/
-python main.py --baseline               # 旧版虚拟校园 3 种子 × 200 代 → output/moead/
-python main.py --tests                  # 正确性自检 + 冒烟测试
-python main.py --plots                  # 用已保存的实验结果重新出图
+# ── 可选参数 ──
+python main.py --tests                      # 只运行正确性自检 + 多边形冒烟测试（不进行优化）
 ```
 
 ## 输出目录
 
 ```
 output/
-├── moead/                     # 旧版基线实验（虚拟校园，3 种子 × 200 代）
-│   ├── archive_seed{1-3}_X.npy / _F.npy   # Pareto 解集
-│   ├── experiment_results.json            # 全部统计 + 聚合
-│   └── fig{1-9}_*.png                     # 9 张结果图
-├── moead_nanhu/               # 南湖 21 点完整实验（10 种子 × 200 代）
-│   ├── archive_seed{1-10}_X.npy / _F.npy  # 10 个独立种子
-│   ├── experiment_results.json            # 全部统计
-│   ├── stage0_stats.json / *.npy          # 阶段 0 采样数据
-│   └── figures/                           # 5 张可视化图
-└── moead_nanhu_fast/          # 南湖 21 点快速实验（独立输出）
-    ├── quick_1x50/                        # 1 种子 × 50 代
-    │   ├── archive_seed1_X.npy / _F.npy
-    │   └── experiment_results.json
-    ├── demo_5x100/                        # 5 种子 × 100 代
-    │   ├── archive_seed{1-5}_X.npy / _F.npy
-    │   └── experiment_results.json
-    └── experiment_log.txt                 # 实验运行日志
+├── moead_nanhu/               # 南湖校区实验（1 种子 × 200 代）
+│   ├── archive_seed42_X.npy / _F.npy       # Pareto 候选解（决策变量 + 目标值）
+│   ├── experiment_results.json             # 实验统计
+│   ├── stage0_stats.json / *.npy           # 阶段 0 采样数据
+│   └── hv_convergence.png                  # HV 收敛曲线图
+└── *.png                      # 可视化图表（由 plot_all.py 生成）
 ```
 
 ## 项目结构
@@ -60,10 +43,7 @@ canteen-moead/
 │   ├── nanhu_reference.json  # 校区信息/参考锚点/边界与成本场状态
 │   └── nanhu_boundary_polygon.json  # A3 搜索多边形（21 顶点，用户已批准）
 ├── src/                      # 问题建模 + 可行性验证
-│   ├── campus_model.py       # [旧版] 校园数据 + 三目标函数（硬编码虚拟校园）
-│   ├── nanhu_campus.py       # [当前] 南湖 21 点加载/结构校验/A3 约束/评价函数
-│   ├── validate.py           # 6000 随机采样验证
-│   └── make_figures.py       # 阶段一 5 张图
+│   └── nanhu_campus.py       # 南湖 21 点加载/结构校验/A3 约束/评价函数
 ├── moead/                    # MOEA/D 算法核心（从零实现，无黑箱库）
 │   ├── config.py             # 全部参数集中配置
 │   ├── weights.py            # 单纯形格点权重（H=12 → 91 子问题）+ 邻域 T=18
@@ -75,16 +55,15 @@ canteen-moead/
 │   └── moead.py              # MOEA/D 主循环
 ├── metrics/                  # HV（精确 3D 阶梯法）/ IGD / Spacing
 ├── experiments/              # 实验运行脚本
-│   ├── run_experiments.py    # [旧版基线] 虚拟校园 3 种子 × 200 代 → output/moead/
-│   ├── run_nanhu.py           # [南湖完整] 10 种子 × 200 代 → output/moead_nanhu/
-│   └── run_nanhu_fast.py     # [南湖快速] quick(1×50) + demo(5×100) → output/moead_nanhu_fast/
+│   └── run_nanhu.py           # 南湖校区实验（1 种子 × 200 代 → output/moead_nanhu/）
 ├── visualization/            # 结果可视化
+│   └── plot_all.py           # 统一可视化入口（只读已有实验结果，不自动运行 MOEA/D）
 ├── tests/                    # 正确性自检 + 冒烟测试
-├── main.py                   # 主入口（默认南湖快速实验）
+├── main.py                   # 唯一推荐入口（默认：优化 + 可视化）
 └── output/                   # 实验产物（见上表）
 ```
 
-## 第一版关键参数
+## 关键参数
 
 | 参数 | 值 |
 |---|---|
@@ -95,7 +74,7 @@ canteen-moead/
 | 变异 | 多项式，pm=1/2，ηm=20 |
 | 归一化 | 动态：z*=运行最小，z_nad=运行最大 |
 | 档案 | 外部非支配档案，决策/目标空间双去重 |
-| 阶段 0 采样 | 6000 随机点（A3 多边形内拒绝采样）/ 旧版矩形内均匀采样 |
+| 阶段 0 采样 | 6000 随机点（A3 多边形内拒绝采样） |
 
 ## 约束机制（南湖 A3 Polygon）
 
@@ -106,9 +85,9 @@ canteen-moead/
 
 Python 3.13 验证。依赖库：numpy、pandas、matplotlib、scipy。
 
-## 报告
+## 数据溯源
 
-- 阶段 1：《校园新增食堂三目标MOEA-D问题建模与可行性验证报告.md》
-- 阶段 2：《校园新增食堂三目标MOEA-D第一版工程实现报告.md》
-- 南湖校区分册：《校园新增食堂MOEA-D南湖校区第一版计算报告.md》
-- 南湖坐标数据详情：`data/nanhu_coordinate_research.md`
+- **南湖 21 点坐标**：`data/nanhu_points.csv`（WGS-84，上层收口）。每个点的经纬度来源、核对过程、置信度记录于 `nanhu_coordinate_research.md`，补充信息见 `data/nanhu_reference.json`。
+- **A3 多边形**：`data/nanhu_boundary_polygon.json`（21 顶点，高德底图描边 + 四门配准，工程近似 ±20-40m，用户已批准）。
+- **底图**：`data/nanhu_campus_map.png`。
+- **边界配准说明**：`data/nanhu_boundary.md`。

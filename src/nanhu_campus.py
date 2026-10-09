@@ -320,7 +320,7 @@ def build_model() -> NanhuModel:
 
 
 def build_evaluate(model: NanhuModel | None = None):
-    """返回与 src/campus_model.evaluate 同签名的目标函数（f1/f2/f3，最小化）。
+    """返回与旧版 virtual campus 同签名的目标函数（f1/f2/f3，最小化）。
 
     f1/f2/f3 的数学定义与第一版完全一致（本次接入未改任何目标函数）。
     """

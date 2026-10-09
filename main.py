@@ -1,23 +1,15 @@
 # -*- coding: utf-8 -*-
 """校园选址 MOEA/D 多目标优化 —— 主入口。
 
-用法（在项目根目录 canteen-moead/ 下）：
-  python main.py              # 默认：南湖 21 点快速实验（5×100 代 → output/moead_nanhu_fast/demo_5x100/）
-  python main.py --baseline   # 旧版基线实验（虚拟校园，3 种子 × 200 代 → output/moead/）
-  python main.py --nanhu      # 南湖 21 点完整实验（10 种子 × 200 代 → output/moead_nanhu/）
-  python main.py --quick      # 南湖 1 种子 × 50 代快速验证（→ output/moead_nanhu_fast/quick_1x50/）
-  python main.py --demo       # 南湖 5 种子 × 100 代快速实验（→ output/moead_nanhu_fast/demo_5x100/）
-  python main.py --tests      # 只跑正确性自检 + 冒烟测试
-  python main.py --plots      # 只重新出图（用已保存的实验结果）
+直接在 PyCharm 中点击运行即可完成一次完整的优化实验并生成可视化。
 
-输出目录：
-  output/moead/                   旧版基线实验（虚拟校园，3 种子 × 200 代）
-  output/moead_nanhu/             南湖 21 点完整实验（10 种子 × 200 代）
-  output/moead_nanhu_fast/        demo_5x100/ + quick_1x50/
+流程:
+  1. 阶段 0 采样（6000 点在 A3 多边形内）
+  2. MOEA/D 优化（91 子问题 × 200 代 × 1 次运行 × seed 42）
+  3. 结果保存至 output/moead_nanhu/
+  4. 运行统一可视化（plot_all.py）生成 7 张图表至 output/
 
-数据版本：
-  - [真实数据 real] 21 点位坐标（4 竞争 + 10 宿舍 + 7 教学 + A3 边界多边形，WGS-84，上层收口）
-  - [旧版虚拟校园] src/campus_model.py 内的硬编码坐标
+可选 --tests 参数运行正确性自检 + 多边形冒烟测试（不进行完整优化）。
 """
 
 import os
@@ -40,28 +32,7 @@ def _run_script(rel_path: str):
 
 def run_tests():
     _run_script("tests/sanity_tests.py")
-    _run_script("tests/smoke_test.py")
-
-
-def run_baseline():
-    _run_script("experiments/run_experiments.py")
-    _run_script("visualization/moead_plots.py")
-
-
-def run_nanhu_full():
-    _run_script("experiments/run_nanhu.py")
-
-
-def run_nanhu_quick():
-    _run_script("experiments/run_nanhu_fast.py --quick")
-
-
-def run_nanhu_demo():
-    _run_script("experiments/run_nanhu_fast.py")
-
-
-def run_plots():
-    _run_script("visualization/moead_plots.py")
+    _run_script("tests/polygon_smoke_test.py")
 
 
 if __name__ == "__main__":
@@ -71,18 +42,10 @@ if __name__ == "__main__":
         run_tests()
         sys.exit(0)
 
-    if "--plots" in args:
-        run_plots()
-        sys.exit(0)
+    print("=" * 55)
+    print("▌ 学生城食堂 · MOEA/D 选址优化")
+    print("▌ 配置: 91 子问题 × 200 代 × 1 次运行 × seed 42")
+    print("=" * 55)
 
-    if "--baseline" in args:
-        run_baseline()
-    elif "--nanhu" in args:
-        run_nanhu_full()
-    elif "--quick" in args:
-        run_nanhu_quick()
-    elif "--demo" in args:
-        run_nanhu_demo()
-    else:
-        # 默认：南湖 21 点快速实验（demo_5x100）
-        run_nanhu_demo()
+    _run_script("experiments/run_nanhu.py")
+    _run_script("visualization/plot_all.py")

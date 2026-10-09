@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""南湖版选址实验：阶段0 临时验证采样 + MOEA/D 运行（A3 多边形搜索空间）。
+"""南湖版选址实验（单次运行）：阶段0 采样 + MOEA/D 1×200（A3 多边形搜索空间）。
 
 数据 provenance（写入结果与报告时必须区分）：
   [真实数据 real]         21 点位坐标（4 竞争 + 10 宿舍 + 7 教学，WGS-84，上层收口）+ A3 边界多边形（用户批准）
@@ -34,7 +34,7 @@ OUT = os.path.join(ROOT, "output", "moead_nanhu")
 os.makedirs(OUT, exist_ok=True)
 
 N_SAMPLES = 6000
-SEEDS = list(range(1, 11))   # 稳定性实验：10 次独立运行（用户指令）
+SEEDS = [42]                 # 单次运行（主入口固定种子，仅用于学习演示）
 HV_REF = (1.05, 1.05, 1.05)
 
 
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     with open(os.path.join(OUT, "experiment_results.json"), "w", encoding="utf-8") as fh:
         json.dump(results, fh, ensure_ascii=False, indent=2)
 
-    print("\n===== 南湖版 10 次运行聚合统计 =====", flush=True)
+    print("\n===== 单次运行结果 =====", flush=True)
     for k, v in summary.items():
         if isinstance(v, dict):
             print(f"  {k:20s} mean={v['mean']:.5f} std={v['std']:.5f} "
