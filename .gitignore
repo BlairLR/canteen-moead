@@ -34,3 +34,12 @@ desktop.ini
 # 保留 output/ 下的重要实验报告、JSON 结果、可视化图、npy 数据
 # （不忽略 output 整体；以下仅忽略可再生的中间/临时产物）
 output/**/__pycache__/
+
+# --- Local debugging scripts ---
+/_check_alignment.py
+/_probe_f1.py
+/_profile_moead.py
+/_verify_alignment.py
+
+# --- Generated web experiment cache ---
+/output/moead_nanhu_web/

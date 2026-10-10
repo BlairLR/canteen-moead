@@ -38,17 +38,25 @@ SEEDS = [42]                 # 单次运行（主入口固定种子，仅用于�
 HV_REF = (1.05, 1.05, 1.05)
 
 
-def stage0(model, evaluate) -> dict:
-    """临时验证采样（A3 多边形内直接采样，方法同阶段一）。"""
+def stage0(model, evaluate, out_dir: str | None = None) -> dict:
+    """临时验证采样（A3 多边形内直接采样，方法同阶段一）。
+
+    Parameters
+    ----------
+    model : NanhuModel
+    evaluate : callable
+    out_dir : str, optional — 输出目录，默认用模块级 OUT。
+    """
+    _dir = out_dir if out_dir is not None else OUT
     rng = np.random.default_rng(42)
     pts = nc.sample_in_polygon(N_SAMPLES, model.polygon_local, rng=rng)
     F = evaluate(pts)
     df = pd.DataFrame(F, columns=["f1", "f2", "f3"])
     spearman = df.rank().corr(method="pearson")
     pf = nondominated_mask(F)          # 非支配掩码（O(N·log|front|)，与 ~dominated_by(F,F) 等价）
-    np.save(os.path.join(OUT, "stage0_samples_pts.npy"), pts)
-    np.save(os.path.join(OUT, "stage0_samples_F.npy"), F)
-    np.save(os.path.join(OUT, "stage0_samples_pf.npy"), pf)
+    np.save(os.path.join(_dir, "stage0_samples_pts.npy"), pts)
+    np.save(os.path.join(_dir, "stage0_samples_F.npy"), F)
+    np.save(os.path.join(_dir, "stage0_samples_pf.npy"), pf)
     stats = {
         "n_samples": N_SAMPLES,
         "spearman": {f"{a}-{b}": float(spearman.loc[a, b])
@@ -56,7 +64,7 @@ def stage0(model, evaluate) -> dict:
         "front_size": int(pf.sum()),
         "ranges": {n: [float(F[:, k].min()), float(F[:, k].max())] for k, n in enumerate(["f1", "f2", "f3"])},
     }
-    with open(os.path.join(OUT, "stage0_stats.json"), "w", encoding="utf-8") as fh:
+    with open(os.path.join(_dir, "stage0_stats.json"), "w", encoding="utf-8") as fh:
         json.dump(stats, fh, ensure_ascii=False, indent=2)
     return stats
 
@@ -101,32 +109,59 @@ def agg(values):
             "min": float(v.min()), "max": float(v.max())}
 
 
-if __name__ == "__main__":
-    model = nc.build_model()
-    evaluate, caps = nc.build_constrained_evaluate(model)
+def run_experiment(evaluate_fn=None, out_dir=None, model=None):
+    """运行一次完整的南湖选址实验（阶段0 + MOEA/D + 结果保存）。
+
+    这是主实验入口，供命令行和 Flask 网页共用。
+
+    Parameters
+    ----------
+    evaluate_fn : callable, optional
+        外部评价函数（如区域模拟地价版）。未提供则使用默认高斯 f3。
+    out_dir : str, optional
+        输出目录。未提供则使用 output/moead_nanhu。
+    model : NanhuModel, optional
+        校园模型。未提供则自动构建。
+
+    Returns
+    -------
+    dict — 实验结果（含 summary、runs、model 元数据等）。
+    """
+    nonlocal_model = model if model is not None else nc.build_model()
+    _OUT = out_dir if out_dir is not None else OUT
+    os.makedirs(_OUT, exist_ok=True)
+
+    if evaluate_fn is not None:
+        evaluate, caps = evaluate_fn, None
+        # 如果外部 evaluate 是 (fn, caps) 元组则拆包
+        if isinstance(evaluate_fn, (list, tuple)) and len(evaluate_fn) == 2:
+            evaluate, caps = evaluate_fn
+        # 否则从外部 evaluate 自己推导 caps（不需严格匹配）
+    else:
+        evaluate, caps = nc.build_constrained_evaluate(nonlocal_model)
 
     # 界外候选评价比例统计（计数包装器，不改变评价结果）
     eval_stats = {"n_out": 0, "n_total": 0}
 
     def counting_evaluate(X):
         Xa = np.atleast_2d(np.asarray(X, dtype=float))
-        n_out = int((~nc.is_inside_polygon(model.polygon_local, Xa)).sum())
+        n_out = int((~nc.is_inside_polygon(nonlocal_model.polygon_local, Xa)).sum())
         eval_stats["n_out"] += n_out
         eval_stats["n_total"] += int(len(Xa))
         return evaluate(X)
 
-    print(f"模型构造完成: A3 多边形搜索空间，外包矩形 x[{model.bounds_x[0]:.1f},{model.bounds_x[1]:.1f}] "
-          f"y[{model.bounds_y[0]:.1f},{model.bounds_y[1]:.1f}]"
-          f" | 需求点 {len(model.demand_xy)} 个 {model.demand_ids}"
-          f" | 竞争点 {len(model.competition_xy)} 个 {model.competition_ids}"
-          f" | 罚值上限 caps={np.round(caps, 2).tolist()}", flush=True)
+    print(f"模型构造完成: A3 多边形搜索空间，外包矩形 x[{nonlocal_model.bounds_x[0]:.1f},{nonlocal_model.bounds_x[1]:.1f}] "
+          f"y[{nonlocal_model.bounds_y[0]:.1f},{nonlocal_model.bounds_y[1]:.1f}]"
+          f" | 需求点 {len(nonlocal_model.demand_xy)} 个 {nonlocal_model.demand_ids}"
+          f" | 竞争点 {len(nonlocal_model.competition_xy)} 个 {nonlocal_model.competition_ids}"
+          f" | caps={'N/A (external)' if caps is None else np.round(caps, 2).tolist()}", flush=True)
 
-    s0 = stage0(model, evaluate)
+    s0 = stage0(nonlocal_model, evaluate, out_dir=_OUT)
     print(f"阶段0 临时验证（A3 内直接采样 n={N_SAMPLES}）: 前沿 {s0['front_size']}/{N_SAMPLES} | "
           f"Spearman {json.dumps({k: round(v, 3) for k, v in s0['spearman'].items()})}", flush=True)
 
-    stage0_F = np.load(os.path.join(OUT, "stage0_samples_F.npy"))
-    stage0_pf = np.load(os.path.join(OUT, "stage0_samples_pf.npy"))
+    stage0_F = np.load(os.path.join(_OUT, "stage0_samples_F.npy"))
+    stage0_pf = np.load(os.path.join(_OUT, "stage0_samples_pf.npy"))
     LO, HI = stage0_F.min(axis=0), stage0_F.max(axis=0)
     REF_FRONT = normalize_fixed(stage0_F[stage0_pf], LO, HI)
 
@@ -134,12 +169,12 @@ if __name__ == "__main__":
     for seed in SEEDS:
         eval_stats["n_out"] = 0
         eval_stats["n_total"] = 0
-        row, Ax, AF = run_one(seed, model, counting_evaluate, LO, HI, REF_FRONT)
+        row, Ax, AF = run_one(seed, nonlocal_model, counting_evaluate, LO, HI, REF_FRONT)
         row["n_out_evals"] = eval_stats["n_out"]
         row["n_total_evals"] = eval_stats["n_total"]
         row["out_eval_frac"] = eval_stats["n_out"] / max(1, eval_stats["n_total"])
-        np.save(os.path.join(OUT, f"archive_seed{seed}_X.npy"), Ax)
-        np.save(os.path.join(OUT, f"archive_seed{seed}_F.npy"), AF)
+        np.save(os.path.join(_OUT, f"archive_seed{seed}_X.npy"), Ax)
+        np.save(os.path.join(_OUT, f"archive_seed{seed}_F.npy"), AF)
         rows.append(row)
         print(f"seed={seed:2d} | 档案 {row['archive_size']:5d} | HV {row['hv']:.4f} | "
               f"IGD {row['igd']:.5f} | Spacing {row['spacing']:.4f} | "
@@ -153,21 +188,21 @@ if __name__ == "__main__":
     summary["hv_baseline_random_sampling"] = hv_3d(REF_FRONT, HV_REF)
 
     results = {
-        "provenance": model.provenance,
+        "provenance": nonlocal_model.provenance,
         "model": {
             "search_space": "A3 Polygon（data/nanhu_boundary_polygon.json）",
-            "bounds_x": list(model.bounds_x), "bounds_y": list(model.bounds_y),
-            "n_polygon_vertices": int(len(model.polygon_local)),
-            "demand_ids": model.demand_ids, "competition_ids": model.competition_ids,
-            "cost_hotspots_local": [list(h) for h in model.cost_hotspots],
-            "penalty_caps": [float(c) for c in caps],
+            "bounds_x": list(nonlocal_model.bounds_x), "bounds_y": list(nonlocal_model.bounds_y),
+            "n_polygon_vertices": int(len(nonlocal_model.polygon_local)),
+            "demand_ids": nonlocal_model.demand_ids, "competition_ids": nonlocal_model.competition_ids,
+            "cost_hotspots_local": [list(h) for h in nonlocal_model.cost_hotspots],
+            "penalty_caps": [float(c) for c in caps] if caps is not None else None,
         },
         "stage0": s0,
         "seeds": SEEDS, "runs": rows, "summary": summary,
         "hv_ref": list(HV_REF),
         "norm_lo": LO.tolist(), "norm_hi": HI.tolist(),
     }
-    with open(os.path.join(OUT, "experiment_results.json"), "w", encoding="utf-8") as fh:
+    with open(os.path.join(_OUT, "experiment_results.json"), "w", encoding="utf-8") as fh:
         json.dump(results, fh, ensure_ascii=False, indent=2)
 
     print("\n===== 单次运行结果 =====", flush=True)
@@ -176,4 +211,10 @@ if __name__ == "__main__":
             print(f"  {k:20s} mean={v['mean']:.5f} std={v['std']:.5f} "
                   f"min={v['min']:.5f} max={v['max']:.5f}", flush=True)
     print(f"随机采样基线 HV = {summary['hv_baseline_random_sampling']:.4f}", flush=True)
-    print(f"结果已写入 {OUT}", flush=True)
+    print(f"结果已写入 {_OUT}", flush=True)
+
+    return results
+
+
+if __name__ == "__main__":
+    run_experiment()

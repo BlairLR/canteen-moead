@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>交互式 MOEA/D 食堂选址实验</title>
+<!-- Leaflet (CDN) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Chart.js (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Three.js (CDN) — 三维 Pareto 散点图 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<!-- 本地样式 -->
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="header">
+  <span class="logo">学生城食堂｜多目标选址 Demo</span>
+</div>
+
+<div class="main-container">
+
+  <!-- 左侧控制面板 -->
+  <div class="left-panel">
+
+    <!-- 交互式地价场设置 -->
+    <div class="panel-section" id="interactive-mode-section">
+      <h3>🖱️ 交互式地价场</h3>
+      <p style="font-size:11px;color:#888;margin-bottom:8px">
+        点击地图添加价格控制点，使用滑块调整影响半径。<br>
+        <strong>所有价格为模拟值（a.u.），不是真实地价。</strong>
+      </p>
+      <div id="interactive-controls">
+        <div class="ctrl-row">
+          <label>基础价格 (BASE)</label>
+          <input type="number" id="ip-base-price" value="80" min="0" max="500" step="5">
+        </div>
+        <div class="ctrl-row">
+          <label>影响半径 σ (m)</label>
+          <input type="range" id="ip-sigma" value="150" min="30" max="500" step="10">
+          <span class="range-val" id="ip-sigma-val">150</span>
+        </div>
+        <div class="ctrl-row">
+          <label>控制点</label>
+          <span class="range-val" id="ip-point-count">0</span>
+        </div>
+      </div>
+      <div class="btn-group" style="margin-top:8px">
+        <button class="btn btn-sm btn-secondary" id="btn-ip-clear">🗑 清除全部</button>
+        <button class="btn btn-sm btn-secondary" id="btn-ip-defaults">📌 示例点</button>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#888">
+        <label><input type="checkbox" id="chk-heatmap" checked> 显示热力图</label>
+        <label style="margin-left:8px"><input type="checkbox" id="chk-contours" checked> 显示等值线</label>
+      </div>
+    </div>
+
+    <!-- 操作 -->
+    <div class="panel-section">
+      <h3>🚀 控制</h3>
+      <button class="btn btn-primary" id="btn-run">
+        ▶ 运行 MOEA/D
+      </button>
+
+      <div class="status-bar">
+        <span class="status-dot idle" id="status-dot"></span>
+        <span id="status-text">就绪</span>
+        <span id="status-extra" style="font-size:11px;color:#888;margin-left:auto"></span>
+      </div>
+    </div>
+
+    <!-- 保存与比较 -->
+    <div class="panel-section">
+      <h3>💾 方案保存与比较</h3>
+      <div class="btn-group">
+        <button class="btn btn-success btn-sm" id="btn-save-a">保存为 A</button>
+        <button class="btn btn-warning btn-sm" id="btn-save-b">保存为 B</button>
+        <button class="btn btn-secondary btn-sm" id="btn-compare">比较 A/B</button>
+      </div>
+    </div>
+
+    <!-- 图例 -->
+    <div class="panel-section" style="font-size:12px;flex-shrink:0">
+      <h3>📖 图例</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;line-height:1.8">
+        <span><span style="color:#e74c3c;font-weight:bold">■</span> 现有食堂</span>
+        <span><span style="color:#2980b9;font-weight:bold">●</span> 宿舍</span>
+        <span><span style="color:#27ae60;font-weight:bold">▲</span> 教学区</span>
+        <span><span style="color:#2980b9;">●</span> 候选解</span>
+        <span><span style="border:1px dashed #333;padding:1px 4px">H1</span> 中心热区</span>
+        <span><span style="border:1px dashed #f39c12;padding:1px 4px">H2</span> 镜像热区</span>
+      </div>
+      <p style="margin-top:6px;font-size:11px;color:#999">
+        [注意] 模拟地价不是真实土地价格。<br>
+        数据来源: <code>data/nanhu_boundary_polygon.json</code> (A3边界) + <code>data/nanhu_points.csv</code> (21点坐标)。
+      </p>
+    </div>
+  </div>
+
+  <!-- 地图区 -->
+  <div class="map-area">
+    <div id="map"></div>
+
+    <!-- 候选解详情 -->
+    <div id="detail-panel" class="detail-panel"></div>
+
+    <!-- Pareto 3D 图表面板 -->
+    <div class="chart-panel">
+      <h4>📈 Pareto 前沿 (f1–f3)</h4>
+      <div id="pareto-chart-3d" class="pareto-chart-3d"></div>
+    </div>
+
+    <!-- 比较面板 -->
+    <div id="compare-panel" class="detail-panel" style="bottom:240px;max-height:260px"></div>
+  </div>
+
+</div>
+
+<!-- 三维 Pareto 散点图模块 -->
+<script src="/static/pareto-3d.js"></script>
+<!-- 本地 JS -->
+<script src="/static/app.js"></script>
+</body>
+</html>

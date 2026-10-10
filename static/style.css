@@ -1,0 +1,479 @@
+/* === 交互式 MOEA/D 选址实验 — 样式 === */
+
+:root {
+  --primary: #2c3e50;
+  --accent: #2980b9;
+  --bg: #f5f6fa;
+  --card-bg: #ffffff;
+  --border: #dcdde1;
+  --text: #2f3640;
+  --success: #27ae60;
+  --danger: #e74c3c;
+  --warning: #f39c12;
+  --radius: 8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* ===== 顶部标题 ===== */
+.header {
+  background: var(--primary);
+  color: #fff;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  flex-shrink: 0;
+}
+.header .logo {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* ===== 主体布局 ===== */
+.main-container {
+  display: flex;
+  height: calc(100vh - 50px);
+}
+
+/* ===== 左面板 ===== */
+.left-panel {
+  width: 300px;
+  min-width: 300px;
+  background: var(--card-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.panel-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--primary);
+}
+
+/* ===== 模式切换 ===== */
+/* ===== 交互式地价控制 ===== */
+#interactive-controls .ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+#interactive-controls .ctrl-row label {
+  min-width: 90px;
+  color: var(--text);
+  font-weight: 500;
+}
+#interactive-controls .ctrl-row input[type="number"] {
+  width: 70px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: monospace;
+}
+#interactive-controls .ctrl-row input[type="range"] {
+  flex: 1;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border);
+  border-radius: 3px;
+  outline: none;
+}
+#interactive-controls .ctrl-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+#interactive-controls .ctrl-row .range-val {
+  min-width: 35px;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+#interactive-controls label input[type="checkbox"] {
+  margin-right: 3px;
+  vertical-align: middle;
+}
+
+/* ===== 控制点标记 ===== */
+.cp-marker {
+  background: #e74c3c;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.cp-marker:hover {
+  width: 18px;
+  height: 18px;
+  border-color: #f39c12;
+}
+.cp-label {
+  background: rgba(231,76,60,0.85);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  font-family: monospace;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.cp-popup .cp-popup-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0;
+  font-size: 13px;
+}
+.cp-popup .cp-popup-row input {
+  width: 70px;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: monospace;
+}
+.cp-popup .cp-popup-row button {
+  padding: 2px 8px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.cp-popup .cp-popup-row .btn-save { background: var(--accent); color: #fff; }
+.cp-popup .cp-popup-row .btn-delete { background: var(--danger); color: #fff; }
+
+/* ===== 图例价格条 ===== */
+.price-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #666;
+}
+.price-legend-bar {
+  width: 100%;
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(to right, 
+    #2c3e50, #2980b9, #27ae60, #f1c40f, #e74c3c);
+}
+/* ===== 按钮 ===== */
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px;
+}
+.btn-primary:hover { background: #2471a3; }
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-secondary {
+  background: var(--border);
+  color: var(--text);
+  margin-right: 6px;
+  flex: 1;
+}
+.btn-secondary:hover { background: #bdc3c7; }
+.btn-success {
+  background: var(--success);
+  color: #fff;
+  flex: 1;
+}
+.btn-success:hover { background: #219a52; }
+.btn-warning {
+  background: var(--warning);
+  color: #fff;
+  flex: 1;
+}
+.btn-warning:hover { background: #d68910; }
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover { background: #c0392b; }
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.btn-group {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* ===== 状态 ===== */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  margin: 8px 0;
+}
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.idle { background: #95a5a6; }
+.status-dot.running { background: var(--warning); animation: pulse 1s infinite; }
+.status-dot.done { background: var(--success); }
+.status-dot.error { background: var(--danger); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ===== 模型点位标记 ===== */
+.model-marker { background: none; border: none; }
+.model-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  position: relative;
+}
+.model-dot.competition { background: #e74c3c; }  /* 现有食堂-红色 */
+.model-dot.dorm { background: #2980b9; }         /* 宿舍-蓝色 */
+.model-dot.teaching { background: #27ae60; }     /* 教学点-绿色 */
+.model-label {
+  position: absolute;
+  left: 16px;
+  top: -6px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  color: #2c3e50;
+  background: rgba(255,255,255,0.85);
+  padding: 0 4px;
+  border-radius: 2px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+/* 候选解标记 */
+.candidate-marker { background: none; border: none; }
+.candidate-dot {
+  width: 10px; height: 10px;
+  background: #f39c12;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.cand-comp-marker { background: none; border: none; }
+.cand-comp-dot {
+  width: 10px; height: 10px;
+  background: #9b59b6;
+  border: 2px solid #fff;
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+/* ===== 地图区 ===== */
+.map-area {
+  flex: 1;
+  position: relative;
+}
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+/* ===== 底部图表面板 ===== */
+.chart-panel {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 380px;
+  background: #ffffff;
+  border-radius: var(--radius);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  padding: 12px;
+  z-index: 1000;
+}
+.chart-panel h4 {
+  font-size: 13px;
+  margin: 0 0 6px 0;
+  color: var(--primary);
+}
+
+/* ===== 三维 Pareto 散点图容器 ===== */
+.pareto-chart-3d {
+  width: 100%;
+  height: 300px;
+  min-height: 300px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.pareto-chart-3d canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+.pareto-3d-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #aab;
+  font-size: 14px;
+  background: #f0f2f5;
+  border-radius: 4px;
+}
+
+/* 3D 图表信息叠加（左下角） */
+.pareto-3d-info {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #888;
+  background: rgba(255,255,255,0.85);
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* 3D 悬停提示（全局定位） */
+.pareto-3d-tooltip {
+  position: fixed;
+  background: rgba(50,50,60,0.92);
+  color: #fff;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 10000;
+  line-height: 1.6;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.pareto-3d-tooltip b {
+  color: #fff;
+  font-weight: 600;
+}
+.pareto-3d-tooltip small {
+  color: #ccc;
+  font-size: 10px;
+}
+
+/* ===== 候选点详情 ===== */
+.detail-panel {
+  position: absolute;
+  bottom: 240px;
+  right: 20px;
+  width: 380px;
+  background: #ffffff;
+  border-radius: var(--radius);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  padding: 10px 12px;
+  z-index: 1000;
+  max-height: 140px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+
+/* 空的详情面板不显示，写入内容后自动显示 */
+.detail-panel:empty {
+  display: none;
+}
+
+.detail-panel strong { color: var(--primary); }
+.detail-panel table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+.detail-panel th, .detail-panel td {
+  padding: 2px 6px;
+  text-align: right;
+  font-family: monospace;
+  font-size: 12px;
+}
+.detail-panel th { text-align: center; background: var(--bg); }
+
+/* ===== 实验比较 ===== */
+.compare-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.compare-card {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.compare-card h5 { font-size: 14px; margin-bottom: 4px; }
+.compare-card .price-row {
+  font-size: 12px;
+  color: #555;
+}
+
+/* ===== 错误提示 ===== */
+.error-toast {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  background: var(--danger);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  z-index: 9999;
+  max-width: 400px;
+  font-size: 14px;
+  animation: fadeIn 0.3s;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .left-panel { width: 100%; min-width: auto; max-height: 40vh; }
+  .main-container { flex-direction: column; }
+  .chart-panel, .detail-panel {
+    width: calc(100% - 16px);
+    right: 8px;
+  }
+}

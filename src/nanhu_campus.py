@@ -481,6 +481,9 @@ def readiness_report() -> dict:
     return report
 
 
+
+
+
 if __name__ == "__main__":
     rep = readiness_report()
     print("== 东北大学南湖校区 选址计算就绪检查（A3 搜索空间）==")
