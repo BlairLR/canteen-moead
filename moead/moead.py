@@ -97,9 +97,18 @@ class MOEAD:
                 Fc_n = norm.normalize(Fc)                       # (1, 3)
                 Fj_n = norm.normalize(F[B[i]])                  # (T, 3)
                 g_child = scalarize(cfg.scalarization, Fc_n, W[B[i]], cfg.pbi_theta)  # (1, T)
-                g_member = scalarize(cfg.scalarization, Fj_n, W[B[i]], cfg.pbi_theta)  # (T, T)->对角
-                # g_member[k, j] 是邻居 j 在权重 λ_j 下的值，只需取对角线
-                g_member_diag = np.diagonal(g_member) if g_member.ndim == 2 else g_member
+                # 邻居各自在自己权重下的标量化值（逐权重直接计算，避免 T×T 广播）
+                if cfg.scalarization == "tch":
+                    g_member_diag = np.max(Fj_n * W[B[i]], axis=1)      # (T,)
+                else:  # "pbi"
+                    Wi = W[B[i]]                                         # (T, 3)
+                    nrm = np.linalg.norm(Wi, axis=1)
+                    nrm = np.where(nrm < 1e-12, 1.0, nrm)
+                    Li = Wi / nrm[:, None]                               # (T, 3)
+                    d1 = np.sum(Fj_n * Li, axis=1)                       # (T,)
+                    proj = d1[:, None] * Li                              # (T, 3)
+                    d2 = np.linalg.norm(Fj_n - proj, axis=1)             # (T,)
+                    g_member_diag = d1 + cfg.pbi_theta * d2              # (T,)
 
                 better = g_child[0] <= g_member_diag
                 if better.any():

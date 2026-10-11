@@ -24,6 +24,8 @@ PROJ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(PROJ, "output")
 sys.path.insert(0, PROJ)
 
+from src.nanhu_campus import wgs2local
+
 # ── 常量 ──
 SEED = 42
 MAX_SCATTER_PTS = 500
@@ -45,13 +47,6 @@ def _try_plt():
         return plt
     except Exception:
         return None
-
-
-def _wgs2local(lat, lon):
-    """Mini wgs2local to avoid importing src.nanhu_campus (expensive)."""
-    LAT0, LON0 = 41.758119, 123.412376
-    M_LAT, M_LON = 111068.8, 83150.3
-    return (lon - LON0) * M_LON, (lat - LAT0) * M_LAT
 
 
 def _seed_paths(rd, seed=SEED):
@@ -113,11 +108,11 @@ def fig_a3_boundary_points(save_path):
         vertices_wgs84 = json.load(f).get("vertices_wgs84", [])
     if not vertices_wgs84:
         return "跳过：JSON 缺 vertices_wgs84"
-    poly_local = np.array([_wgs2local(float(lat), float(lon)) for lat, lon in vertices_wgs84])
+    poly_local = np.array([wgs2local(float(lat), float(lon)) for lat, lon in vertices_wgs84])
     pts_local, pt_types = [], []
     with open(csv_fp, "r", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            xy = _wgs2local(float(row["latitude"]), float(row["longitude"]))
+            xy = wgs2local(float(row["latitude"]), float(row["longitude"]))
             pts_local.append(xy); pt_types.append(row["type"])
     pts_local = np.array(pts_local)
     plt = _try_plt()
@@ -159,7 +154,7 @@ def fig_decision_space(rd, save_path):
         with open(poly_fp, "r", encoding="utf-8") as f:
             vtx = json.load(f).get("vertices_wgs84", [])
         if vtx:
-            pl = np.array([_wgs2local(float(lat), float(lon)) for lat, lon in vtx])
+            pl = np.array([wgs2local(float(lat), float(lon)) for lat, lon in vtx])
             pc = np.vstack([pl, pl[0]])
             ax.plot(pc[:, 0], pc[:, 1], "k-", lw=1, alpha=0.4)
             ax.fill(pc[:, 0], pc[:, 1], alpha=0.03, color="gray")
@@ -173,7 +168,7 @@ def fig_decision_space(rd, save_path):
         pts, typs = [], []
         with open(csv_fp, "r", encoding="utf-8") as f:
             for row in csv.DictReader(f):
-                xy = _wgs2local(float(row["latitude"]), float(row["longitude"]))
+                xy = wgs2local(float(row["latitude"]), float(row["longitude"]))
                 pts.append(xy); typs.append(row["type"])
         if pts:
             pts = np.array(pts)
@@ -209,11 +204,10 @@ def fig_pareto_3d(rd, save_path, max_pts=500):
 
 
 # ── 图 6: 新食堂候选方案 ──
-def fig_canteen_schemes(save_path):
+def fig_canteen_schemes(rd, save_path):
     """从 Pareto 档案选取 4 个候选，位置图 + 目标值雷达图"""
-    rd = os.path.join(OUT, "moead_nanhu")
     if not os.path.isdir(rd):
-        return "跳过：无 moead_nanhu 数据"
+        return "跳过：无实验数据"
     xp, fp = _seed_paths(rd)
     if not xp:
         return "跳过：缺少 archive 档案"
@@ -233,11 +227,11 @@ def fig_canteen_schemes(save_path):
         with open(pf, "r", encoding="utf-8") as f:
             vtx = json.load(f).get("vertices_wgs84", [])
             if vtx:
-                poly_local = np.array([_wgs2local(float(lat), float(lon)) for lat, lon in vtx])
+                poly_local = np.array([wgs2local(float(lat), float(lon)) for lat, lon in vtx])
     if os.path.isfile(cf):
         with open(cf, "r", encoding="utf-8") as f:
             for row in csv.DictReader(f):
-                xy = _wgs2local(float(row["latitude"]), float(row["longitude"]))
+                xy = wgs2local(float(row["latitude"]), float(row["longitude"]))
                 pts_local.append(xy); pt_types.append(row["type"])
         pts_local = np.array(pts_local) if pts_local else np.empty((0, 2))
     plt = _try_plt()
@@ -280,7 +274,7 @@ def fig_canteen_schemes(save_path):
 
 
 # ── 图 7: 地价空间分布 ──
-def fig_land_cost_map(save_path):
+def fig_land_cost_map(rd, save_path):
     """A3 多边形内部的合成成本空间分布 + 校园点位 + Pareto 候选位置"""
     poly_fp = os.path.join(PROJ, "data", "nanhu_boundary_polygon.json")
     csv_fp = os.path.join(PROJ, "data", "nanhu_points.csv")
@@ -295,31 +289,18 @@ def fig_land_cost_map(save_path):
         vertices_wgs84 = json.load(f).get("vertices_wgs84", [])
     if not vertices_wgs84:
         return "跳过：JSON 缺 vertices_wgs84"
-    poly_local = np.array([_wgs2local(float(lat), float(lon)) for lat, lon in vertices_wgs84])
+    poly_local = np.array([wgs2local(float(lat), float(lon)) for lat, lon in vertices_wgs84])
 
     # --- 加载点位 ---
     pts_local, pt_types = [], []
     with open(csv_fp, "r", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            xy = _wgs2local(float(row["latitude"]), float(row["longitude"]))
+            xy = wgs2local(float(row["latitude"]), float(row["longitude"]))
             pts_local.append(xy); pt_types.append(row["type"])
     pts_local = np.array(pts_local)
 
-    # --- 计算成本热点（与 src/nanhu_campus.py build_model() 完全一致）---
+    # --- 计算成本（无热点时的常量基准） ---
     COST_BASE = 80.0
-    AMPLITUDES = (240.0, 170.0)
-    SIGMAS = (160.0, 100.0)
-    cx_c = 0.5 * (poly_local[:, 0].min() + poly_local[:, 0].max())
-    cy_c = 0.5 * (poly_local[:, 1].min() + poly_local[:, 1].max())
-    centroid = pts_local.mean(axis=0)
-    h1_center = (centroid[0], centroid[1])
-    h2_center = (2 * cx_c - h1_center[0], 2 * cy_c - h1_center[1])
-    hotspots = [
-        (h1_center[0], h1_center[1], AMPLITUDES[0], SIGMAS[0]),
-        (h2_center[0], h2_center[1], AMPLITUDES[1], SIGMAS[1]),
-    ]
-
-    # --- 生成网格 ---
     bx_lo, bx_hi = poly_local[:, 0].min(), poly_local[:, 0].max()
     by_lo, by_hi = poly_local[:, 1].min(), poly_local[:, 1].max()
     nx, ny = 120, 120
@@ -334,13 +315,10 @@ def fig_land_cost_map(save_path):
 
     # --- 计算成本 ---
     cost = np.full(grid_pts.shape[0], COST_BASE)
-    for hcx, hcy, A, s in hotspots:
-        cost += A * np.exp(-((grid_pts[:, 0] - hcx) ** 2 + (grid_pts[:, 1] - hcy) ** 2) / (2.0 * s ** 2))
     cost_grid = cost.reshape(ny, nx)
     cost_grid[~inside] = np.nan   # 多边形外部留白
 
     # --- 加载 Pareto 候选解 ---
-    rd = os.path.join(OUT, "moead_nanhu")
     xp, _ = _seed_paths(rd)
     pareto_X = np.load(xp, mmap_mode="r") if xp else None
 
@@ -351,10 +329,20 @@ def fig_land_cost_map(save_path):
     _, ax = plt.subplots(figsize=(8, 7))
 
     # 成本色阶
-    levels = np.linspace(float(np.nanmin(cost_grid)), float(np.nanmax(cost_grid)), 25)
-    cf = ax.contourf(Xg, Yg, cost_grid, levels=levels, cmap="YlOrRd", extend="both")
-    cbar = plt.colorbar(cf, ax=ax, shrink=0.8)
-    cbar.set_label("Simulated Cost (a.u.)")
+    cmin, cmax = float(np.nanmin(cost_grid)), float(np.nanmax(cost_grid))
+    if cmax - cmin < 1e-6:
+        # 均匀成本场（无控制点）→ 单色填充并标注基准值
+        ax.imshow(np.where(inside, cost_grid, np.nan),
+                   extent=(xs[0], xs[-1], ys[0], ys[-1]),
+                   origin="lower", cmap="YlOrRd", aspect="auto")
+        ax.text(0.5, 0.02, f"Uniform cost = {COST_BASE:.0f} a.u. (no control points)",
+                transform=ax.transAxes, ha="center", fontsize=11,
+                color="#555", style="italic")
+    else:
+        levels = np.linspace(cmin, cmax, 25)
+        cf = ax.contourf(Xg, Yg, cost_grid, levels=levels, cmap="YlOrRd", extend="both")
+        cbar = plt.colorbar(cf, ax=ax, shrink=0.8)
+        cbar.set_label("Simulated Cost (a.u.)")
 
     # A3 边界
     pc = np.vstack([poly_local, poly_local[0]])
@@ -402,8 +390,8 @@ def main():
     go(fig_a3_boundary_points, os.path.join(OUT, "a3_boundary_points.png"), "A3 Boundary")
     go(fig_decision_space, os.path.join(OUT, "decision_space.png"), "Decision Space", rd)
     go(fig_pareto_3d, os.path.join(OUT, "pareto_3d_nanhu.png"), "Pareto 3D", rd)
-    go(fig_canteen_schemes, os.path.join(OUT, "canteen_schemes.png"), "Canteen Schemes")
-    go(fig_land_cost_map, os.path.join(OUT, "land_cost_map.png"), "Land Cost Map")
+    go(fig_canteen_schemes, os.path.join(OUT, "canteen_schemes.png"), "Canteen Schemes", rd)
+    go(fig_land_cost_map, os.path.join(OUT, "land_cost_map.png"), "Land Cost Map", rd)
     elapsed = time.perf_counter() - t0
     print("=" * 55)
     print("▌ 绘图报告")

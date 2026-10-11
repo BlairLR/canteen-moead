@@ -1,0 +1,31 @@
+校园食堂选址 MOEA/D
+
+�?MOEA/D 算法�?在哪儿盖新食堂最�?�?
+三个目标�?  f1 = 离宿�?教学楼越近越好（便利性）
+  f2 = 和现有食堂离得越远越好（竞争�?  f3 = 地价越便宜越好（预算友好�?
+需要依�?pip install numpy pandas matplotlib scipy flask
+
+
+运行方式
+
+方式 A：python main.py （默认地价相同）
+
+  跑完自动生成 7 张图�?output/�?    hv_convergence.png        HV 收敛曲线（看算法是否收敛�?    pareto_f1f2_nanhu.png     f1-f2 二维 Pareto 前沿
+    pareto_3d_nanhu.png       三个目标的三维散点图
+    a3_boundary_points.png    A3 校园地图 + 21 个定位点
+    decision_space.png        决策空间�?Pareto 解的分布
+    canteen_schemes.png       选址方案在地图上的具体位�?    land_cost_map.png         模拟地价场色阶图
+  地价 f3 固定�?80（所有候选点成本一样，只看位置）�?
+方式 B：python app.py  （地价自定义�?
+  启动网页，浏览器打开 http://127.0.0.1:5200�?  地价 f3 由地图上点击设控制点决定�?  适合：测试不同地价假设�?
+  控制点说明：
+    - 设置 2-5 个点就够�?    - 每个点设一个价格（0-500�?    - 点周围的地价会平滑过渡（高斯 RBF�?    - σ（影响半径）�?00-200 米，越大影响范围越广
+    - 不设控制�?�?f3 也是 80（同 main.py�?    - 清空按钮可重置所有控制点
+
+目录
+  main.py            —�?自动模式：优�?+ 出图
+  app.py             —�?网页模式：交互式地图操作
+  src/nanhu_campus.py     —�?校园模型 + 三个目标的计�?  src/interactive_pricing.py  —�?交互式地价场算法
+  moead/              —�?MOEA/D 核心算法�? 个模块）
+  data/               —�?校园数据
+  output/             —�?实验结果和图表（自动生成�?

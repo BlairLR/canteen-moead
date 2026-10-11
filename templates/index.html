@@ -50,7 +50,6 @@
       </div>
       <div class="btn-group" style="margin-top:8px">
         <button class="btn btn-sm btn-secondary" id="btn-ip-clear">🗑 清除全部</button>
-        <button class="btn btn-sm btn-secondary" id="btn-ip-defaults">📌 示例点</button>
       </div>
       <div style="margin-top:8px;font-size:11px;color:#888">
         <label><input type="checkbox" id="chk-heatmap" checked> 显示热力图</label>
@@ -72,16 +71,6 @@
       </div>
     </div>
 
-    <!-- 保存与比较 -->
-    <div class="panel-section">
-      <h3>💾 方案保存与比较</h3>
-      <div class="btn-group">
-        <button class="btn btn-success btn-sm" id="btn-save-a">保存为 A</button>
-        <button class="btn btn-warning btn-sm" id="btn-save-b">保存为 B</button>
-        <button class="btn btn-secondary btn-sm" id="btn-compare">比较 A/B</button>
-      </div>
-    </div>
-
     <!-- 图例 -->
     <div class="panel-section" style="font-size:12px;flex-shrink:0">
       <h3>📖 图例</h3>
@@ -90,8 +79,6 @@
         <span><span style="color:#2980b9;font-weight:bold">●</span> 宿舍</span>
         <span><span style="color:#27ae60;font-weight:bold">▲</span> 教学区</span>
         <span><span style="color:#2980b9;">●</span> 候选解</span>
-        <span><span style="border:1px dashed #333;padding:1px 4px">H1</span> 中心热区</span>
-        <span><span style="border:1px dashed #f39c12;padding:1px 4px">H2</span> 镜像热区</span>
       </div>
       <p style="margin-top:6px;font-size:11px;color:#999">
         [注意] 模拟地价不是真实土地价格。<br>
@@ -113,8 +100,6 @@
       <div id="pareto-chart-3d" class="pareto-chart-3d"></div>
     </div>
 
-    <!-- 比较面板 -->
-    <div id="compare-panel" class="detail-panel" style="bottom:240px;max-height:260px"></div>
   </div>
 
 </div>

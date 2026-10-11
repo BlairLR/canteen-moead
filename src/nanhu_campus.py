@@ -37,11 +37,9 @@ POLYGON_JSON = os.path.join(ROOT, "data", "nanhu_boundary_polygon.json")
 LAT0, LON0 = 41.758119, 123.412376
 M_LAT, M_LON = 111068.8, 83150.3
 
-# ---- provisional synthetic 成本场参数（用户决定 B2，非真实地价） ----
+# ---- f3 成本（由交互式地价场决定，此处为无控制点时的基准值） ----
 SERVICE_RADIUS_M = 150.0                    # f2 服务半径 σs：沿用第一版定义
-COST_BASE = 80.0                            # 万元
-COST_HOTSPOT_AMPLITUDES = (240.0, 170.0)    # 热点1/热点2 峰值增量
-COST_HOTSPOT_SIGMAS = (160.0, 100.0)
+COST_BASE = 80.0                            # 万元（无交互式控制点时的默认值）
 
 
 class MissingCoordinatesError(RuntimeError):
@@ -74,7 +72,6 @@ class NanhuModel:
     bounds_y: tuple
     demand_xy: np.ndarray             # (n,2) 需求点（宿舍+教学）局部米制 [真实数据转换]
     competition_xy: np.ndarray        # (m,2) 竞争点局部米制 [真实数据转换]
-    cost_hotspots: list               # [(cx,cy,A,s)] provisional synthetic
     demand_ids: list                  # 全部需求点 id（dorm + teaching）
     demand_dorm_ids: list             # 宿舍需求点 id（D01-D10，等权；分类权重为后续扩展接口）
     demand_teaching_ids: list         # 教学区需求点 id（T01-T07，等权；分类权重为后续扩展接口）
@@ -296,22 +293,11 @@ def build_model() -> NanhuModel:
     demand_teaching_ids = [located[i].pid for i in demand_idx if located[i].ptype == "teaching"]
     competition_ids = [located[i].pid for i in comp_idx]
 
-    # provisional synthetic 成本场（B2 规则不变，随点位/帧重算）：
-    #   热点1 = 已定位点位收口质心（活动质心）；热点2 = 热点1 关于搜索框中心镜像
-    centroid = xy.mean(axis=0)
-    cx_c = 0.5 * (bounds_x[0] + bounds_x[1])
-    cy_c = 0.5 * (bounds_y[0] + bounds_y[1])
-    h1 = (float(centroid[0]), float(centroid[1]),
-          COST_HOTSPOT_AMPLITUDES[0], COST_HOTSPOT_SIGMAS[0])
-    h2 = (2 * cx_c - h1[0], 2 * cy_c - h1[1],
-          COST_HOTSPOT_AMPLITUDES[1], COST_HOTSPOT_SIGMAS[1])
-
     return NanhuModel(
         points=points,
         polygon_local=poly_local, polygon_wgs84=poly_wgs,
         bounds_x=bounds_x, bounds_y=bounds_y,
         demand_xy=demand_xy, competition_xy=competition_xy,
-        cost_hotspots=[h1, h2],
         demand_ids=demand_ids,
         demand_dorm_ids=demand_dorm_ids,
         demand_teaching_ids=demand_teaching_ids,
@@ -320,9 +306,11 @@ def build_model() -> NanhuModel:
 
 
 def build_evaluate(model: NanhuModel | None = None):
-    """返回与旧版 virtual campus 同签名的目标函数（f1/f2/f3，最小化）。
+    """返回标准目标函数（f1/f2/f3，最小化）。
 
-    f1/f2/f3 的数学定义与第一版完全一致（本次接入未改任何目标函数）。
+    f1 = 需求点到候选点的平均距离（越小越好）
+    f2 = 与现有食堂的服务重叠（越小越好）
+    f3 = 候选点建设成本基准值（由交互式地价场或默认常量决定）
     """
     if model is None:
         model = build_model()
@@ -339,8 +327,6 @@ def build_evaluate(model: NanhuModel | None = None):
         cy = comp[:, None, 1] - y[None, :]
         f2 = np.exp(-(cx**2 + cy**2) / (2.0 * SERVICE_RADIUS_M**2)).mean(axis=0)
         f3 = np.full(X.shape[0], COST_BASE)
-        for hcx, hcy, A, s in model.cost_hotspots:
-            f3 = f3 + A * np.exp(-(((x - hcx) ** 2) + ((y - hcy) ** 2)) / (2.0 * s**2))
         return np.column_stack([f1, f2, f3])
 
     return evaluate
@@ -502,9 +488,6 @@ if __name__ == "__main__":
         for ids, arr in [(m.demand_ids, m.demand_xy), (m.competition_ids, m.competition_xy)]:
             for pid, (x, y) in zip(ids, arr):
                 print(f"  {pid:<4s} ({x:7.1f}, {y:7.1f})")
-        print("provisional synthetic 成本热点 [决定 B2]:")
-        for k, (cx, cy, A, s) in enumerate(m.cost_hotspots, 1):
-            print(f"  热点{k}: 中心({cx:.1f}, {cy:.1f}) +{A:.0f}万 σ={s:.0f}m")
     if "points_inside" in rep:
         bad = [k for k, v in rep["points_inside"].items() if not v]
         print(f"\n21 点包含性: {'全部界内 ✔' if not bad else '界外: ' + str(bad)}")

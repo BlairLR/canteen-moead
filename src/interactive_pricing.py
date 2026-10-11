@@ -42,8 +42,8 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from src.nanhu_campus import (
-    build_model, build_constrained_evaluate,
-    is_inside_polygon, sample_in_polygon,
+    build_model,
+    is_inside_polygon,
 )
 
 # ---------------------------------------------------------------------------
@@ -151,66 +151,6 @@ def make_interactive_evaluate(control_points: list[dict],
 
 
 # ---------------------------------------------------------------------------
-# 带 A3 约束的全目标函数
-# ---------------------------------------------------------------------------
-
-def build_constrained_interactive_evaluate(model,
-                                           control_points: list[dict],
-                                           base_price: float = 80.0,
-                                           sigma: float = 150.0,
-                                           margin: float = 1.1):
-    """带 A3 多边形约束的目标函数（f1/f2 同默认，f3 用交互式地价场）。
-
-    界内 → 真实 (f1,f2,f3)；界外 → 有界罚值。
-    """
-    base_eval = build_constrained_evaluate(model)
-
-    # 构建交互式 f3
-    f3_fn = make_interactive_evaluate(
-        control_points, base_price, sigma,
-        model.bounds_x, model.bounds_y,
-    )
-
-    # 用 base 评价 probe 确定罚值上界
-    probe = sample_in_polygon(2000, model.polygon_local)
-    probe_F = base_eval(probe)
-    # 替换 f3 为交互式价格
-    probe_F[:, 2] = f3_fn(probe)
-    caps = probe_F.max(axis=0) * margin
-
-    # 预构建标准 f1/f2
-    base = __import__("src.nanhu_campus", fromlist=[""]).build_evaluate(model)
-    demand = model.demand_xy
-    comp = model.competition_xy
-
-    def evaluate(X: np.ndarray) -> np.ndarray:
-        Xa = np.atleast_2d(np.asarray(X, dtype=float))
-        x, y = Xa[:, 0], Xa[:, 1]
-
-        # f1 / f2 同默认
-        dx = demand[:, None, 0] - x[None, :]
-        dy = demand[:, None, 1] - y[None, :]
-        f1 = np.hypot(dx, dy).mean(axis=0)
-        cx = comp[:, None, 0] - x[None, :]
-        cy = comp[:, None, 1] - y[None, :]
-        f2 = np.exp(-(cx**2 + cy**2) / (2.0 * (__import__("src.nanhu_campus",
-            fromlist=[""]).SERVICE_RADIUS_M)**2)).mean(axis=0)
-
-        # f3 用交互式地价场
-        f3 = f3_fn(Xa)
-
-        F = np.column_stack([f1, f2, f3])
-
-        # A3 约束
-        out = ~is_inside_polygon(model.polygon_local, Xa)
-        if out.any():
-            F[out] = caps
-        return F
-
-    return evaluate
-
-
-# ---------------------------------------------------------------------------
 # 网格价格场计算（供热力图/等值线）
 # ---------------------------------------------------------------------------
 
@@ -308,7 +248,7 @@ def _test():
 
     # 2. 单控制点：紧贴 ≈ 控制点价格，远离趋于 BASE
     pts = np.array([
-        [-102.5, 434.2],           # 紧贴 H1 中心
+        [-102.5, 434.2],           # 紧贴第一控制点中心
         [-102.48 + 450, 434.16],   # 3σ = 450m 外
         [-102.48 + 900, 434.16],   # 6σ = 900m 外
     ])

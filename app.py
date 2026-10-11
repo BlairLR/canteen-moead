@@ -20,13 +20,20 @@ sys.path.insert(0, HERE)
 from flask import Flask, jsonify, request, send_from_directory
 
 from src.nanhu_campus import (
-    build_model,
+    build_model, build_evaluate,
+    is_inside_polygon, sample_in_polygon,
     local2wgs, wgs2local,
     LAT0, LON0, M_LAT, M_LON,
 )
 from src.interactive_pricing import (
     compute_price_grid, compute_contours,
     make_interactive_evaluate, ASSUMED_FLOOR_AREA,
+)
+
+# 静态图表生成（与 CLI 相同的 7 张 PNG）
+from visualization.plot_all import (
+    fig_hv_convergence, fig_pareto_2d, fig_a3_boundary_points,
+    fig_decision_space, fig_pareto_3d, fig_canteen_schemes, fig_land_cost_map,
 )
 
 # --- 必须放在 Flask app 创建之前，避免循环导入 ---
@@ -73,41 +80,29 @@ def _run_interactive_job(job_id: str, control_points: list, base_price: float,
         # 构建带交互式地价的评价函数
         from experiments.run_nanhu import run_experiment
 
-        # 直接用交互式 evaluate 闭包
+        # 复用标准 f1/f2 评价（与 CLI 相同，由 build_evaluate 提供）
+        base_eval = build_evaluate(model)
+        interactive_f3 = make_interactive_evaluate(
+            control_points, base_price, sigma,
+            model.bounds_x, model.bounds_y, ASSUMED_FLOOR_AREA)
+
         def interactive_evaluate(X):
-            # f1/f2 同默认
-            from src.nanhu_campus import is_inside_polygon, SERVICE_RADIUS_M
-            from src.nanhu_campus import build_model as _bm
-            m = _get_model()
-            demand = m.demand_xy
-            comp = m.competition_xy
             Xa = np.atleast_2d(np.asarray(X, dtype=float))
-            x, y = Xa[:, 0], Xa[:, 1]
-            dx = demand[:, None, 0] - x[None, :]
-            dy = demand[:, None, 1] - y[None, :]
-            f1 = np.hypot(dx, dy).mean(axis=0)
-            cx = comp[:, None, 0] - x[None, :]
-            cy = comp[:, None, 1] - y[None, :]
-            f2 = np.exp(-(cx**2 + cy**2) / (2.0 * SERVICE_RADIUS_M**2)).mean(axis=0)
-            f3 = make_interactive_evaluate(
-                control_points, base_price, sigma,
-                m.bounds_x, m.bounds_y, ASSUMED_FLOOR_AREA)(Xa)
-            F = np.column_stack([f1, f2, f3])
-            out = ~is_inside_polygon(m.polygon_local, Xa)
+            base_F = base_eval(Xa)  # f1, f2（以及合成的 f3，下一行覆盖）
+            F = np.column_stack([base_F[:, 0], base_F[:, 1], interactive_f3(Xa)])
+            # 约束惩罚（同 build_constrained_evaluate 模式）
+            out = ~is_inside_polygon(model.polygon_local, Xa)
             if out.any():
-                probe = __import__("src.nanhu_campus", fromlist=[""]).sample_in_polygon(
-                    2000, m.polygon_local)
-                caps = np.column_stack([
-                    np.hypot(demand[:, None, 0] - probe[None, :, 0],
-                             demand[:, None, 1] - probe[None, :, 1]).mean(axis=0),
-                    np.exp(-((comp[:, None, 0] - probe[None, :, 0])**2 +
-                             (comp[:, None, 1] - probe[None, :, 1])**2)
-                           / (2.0 * SERVICE_RADIUS_M**2)).mean(axis=0),
-                    make_interactive_evaluate(
-                        control_points, base_price, sigma,
-                        m.bounds_x, m.bounds_y, ASSUMED_FLOOR_AREA)(probe),
-                ]).max(axis=0) * 1.1
-                F[out] = caps
+                if not hasattr(interactive_evaluate, "_caps"):
+                    probe = sample_in_polygon(2000, model.polygon_local)
+                    probe_F = base_eval(probe)
+                    caps = np.array([
+                        probe_F[:, 0].max() * 1.1,   # f1 cap
+                        probe_F[:, 1].max() * 1.1,   # f2 cap
+                        interactive_f3(probe).max() * 1.1,  # f3 cap（交互式）
+                    ])
+                    interactive_evaluate._caps = caps
+                F[out] = interactive_evaluate._caps
             return F
 
         # 创建独立输出目录
@@ -135,6 +130,9 @@ def _run_interactive_job(job_id: str, control_points: list, base_price: float,
         )
 
         _update_job(job_id, {"progress": "postprocess"})
+
+        # ── 生成静态图表（与 CLI 相同的 7 张 PNG，输出到 output/）──
+        _generate_charts(out_dir)
 
         # 加载归档数据（降采样供前端展示）
         Af = np.load(os.path.join(out_dir, "archive_seed42_F.npy"))
@@ -177,6 +175,15 @@ def _run_interactive_job(job_id: str, control_points: list, base_price: float,
                          float(results["summary"]["f3_max"]["mean"])],
             "mode": "interactive_pricing",
             "job_id": job_id,
+            "charts": {
+                "hv_convergence":    "/output/hv_convergence.png",
+                "pareto_f1f2":       "/output/pareto_f1f2_nanhu.png",
+                "a3_boundary":       "/output/a3_boundary_points.png",
+                "decision_space":    "/output/decision_space.png",
+                "pareto_3d":         "/output/pareto_3d_nanhu.png",
+                "canteen_schemes":   "/output/canteen_schemes.png",
+                "land_cost_map":     "/output/land_cost_map.png",
+            },
         }
 
         _update_job(job_id, {"status": "done", "progress": "done", "result": result_data})
@@ -185,6 +192,31 @@ def _run_interactive_job(job_id: str, control_points: list, base_price: float,
         import traceback
         tb = traceback.format_exc()
         _update_job(job_id, {"status": "error", "error": str(e), "traceback": tb})
+
+
+def _generate_charts(rd: str):
+    """为一次实验生成 7 张静态 PNG 图表，直接输出到 output/（与 CLI 一致）。"""
+    chart_dir = os.path.join(HERE, "output")
+    os.makedirs(chart_dir, exist_ok=True)
+    charts: list[str] = []
+
+    def _go(fn, filename, *args):
+        save_path = os.path.join(chart_dir, filename)
+        err = fn(*args, save_path) if args else fn(save_path)
+        if err is None:
+            charts.append(save_path)
+        else:
+            print(f"  [跳过] {filename}: {err}", flush=True)
+
+    _go(fig_hv_convergence,    "hv_convergence.png",                   rd)
+    _go(fig_pareto_2d,         "pareto_f1f2_nanhu.png",               rd, (0, 1))
+    _go(fig_a3_boundary_points,"a3_boundary_points.png")
+    _go(fig_decision_space,    "decision_space.png",                  rd)
+    _go(fig_pareto_3d,         "pareto_3d_nanhu.png",                 rd)
+    _go(fig_canteen_schemes,   "canteen_schemes.png",                 rd)
+    _go(fig_land_cost_map,     "land_cost_map.png",                   rd)
+
+    print(f"  静态图表: {len(charts)}/7 张 → {chart_dir}", flush=True)
 
 
 # ---------------------------------------------------------------------------
@@ -205,6 +237,12 @@ def static_files(filename):
 def data_files(filename):
     """服务 data/ 目录下的静态文件（校园底图等）。"""
     return send_from_directory(os.path.join(HERE, "data"), filename)
+
+
+@app.route("/output/<path:filename>")
+def serve_output(filename):
+    """服务 output/ 目录下的静态图表 PNG。"""
+    return send_from_directory(os.path.join(HERE, "output"), filename)
 
 
 @app.route("/api/model")
@@ -241,22 +279,6 @@ def api_model():
             "b_lat": LAT0, "b_lon": LON0,
         },
         "assumed_floor_area": 1.0,
-        "default_control_points": [
-            {
-                "id": "H1", "name": "中心热区",
-                "lat": 41.76202793, "lon": 123.41114353,
-                "x_local": -102.48, "y_local": 434.16,
-                "default_price": 240.0,
-                "description": "21 点质心附近区域",
-            },
-            {
-                "id": "H2", "name": "镜像热区",
-                "lat": 41.76490407, "lon": 123.41386138,
-                "x_local": 123.51, "y_local": 753.61,
-                "default_price": 170.0,
-                "description": "质心关于A3外包框中心的镜像区域",
-            },
-        ],
         "coordinate_system": "米制局部坐标（x=东向, y=北向）",
         "note": "所有价格为模拟值（a.u.），不是真实地价",
         # 校园底图信息：21 顶点 LSQ 仿射配准（残差 0.1m RMS）
@@ -295,117 +317,6 @@ def api_status(job_id):
         resp["result"] = job["result"]
 
     return jsonify(resp)
-
-
-@app.route("/api/experiments", methods=["GET"])
-def api_list_experiments():
-    """列出保存的实验。"""
-    exps = []
-    if os.path.isdir(WEB_OUT):
-        for d in sorted(os.listdir(WEB_OUT)):
-            dpath = os.path.join(WEB_OUT, d)
-            if os.path.isdir(dpath) and os.path.isfile(os.path.join(dpath, "experiment_results.json")):
-                with open(os.path.join(dpath, "experiment_results.json"), "r", encoding="utf-8") as f:
-                    results = json.load(f)
-                pricing = {}
-                pcfg_path = os.path.join(dpath, "pricing_config.json")
-                if os.path.isfile(pcfg_path):
-                    with open(pcfg_path, "r", encoding="utf-8") as f:
-                        pricing = json.load(f)
-
-                exps.append({
-                    "id": d,
-                    "created_at": os.path.getmtime(dpath),
-                    "hv": results["summary"]["hv"]["mean"],
-                    "pricing": pricing,
-                    "archive_size": results["runs"][0]["archive_size"],
-                })
-    return jsonify(sorted(exps, key=lambda x: x["created_at"], reverse=True))
-
-
-@app.route("/api/experiments/save", methods=["POST"])
-def api_save_experiment():
-    """标记一个 job 结果为实验 A 或 B（硬链接 / 复制快照）。"""
-    data = request.get_json(force=True)
-    label = data.get("label", "A").upper()
-    job_id = data.get("job_id", "")
-
-    if label not in ("A", "B"):
-        return jsonify({"status": "error", "error": "标签只能是 A 或 B"}), 400
-
-    src = os.path.join(WEB_OUT, job_id)
-    if not os.path.isdir(src):
-        return jsonify({"status": "error", "error": f"job {job_id} 不存在"}), 404
-
-    dst = os.path.join(WEB_OUT, f"experiment_{label}")
-    # 删除旧快照
-    if os.path.isdir(dst):
-        import shutil
-        shutil.rmtree(dst)
-    import shutil
-    shutil.copytree(src, dst)
-
-    return jsonify({"status": "ok", "label": label, "path": dst})
-
-
-@app.route("/api/experiments/compare")
-def api_compare():
-    """比较实验 A 和 B 的数据。"""
-    a_dir = os.path.join(WEB_OUT, "experiment_A")
-    b_dir = os.path.join(WEB_OUT, "experiment_B")
-
-    def _load_exp(exp_dir, label):
-        if not os.path.isdir(exp_dir):
-            return None
-        results_path = os.path.join(exp_dir, "experiment_results.json")
-        config_path = os.path.join(exp_dir, "pricing_config.json")
-        if not os.path.isfile(results_path):
-            return None
-
-        with open(results_path, "r", encoding="utf-8") as f:
-            results = json.load(f)
-        pricing = {}
-        if os.path.isfile(config_path):
-            with open(config_path, "r", encoding="utf-8") as f:
-                pricing = json.load(f)
-
-        Af_path = os.path.join(exp_dir, "archive_seed42_F.npy")
-        Ax_path = os.path.join(exp_dir, "archive_seed42_X.npy")
-        pf_data = []
-        if os.path.isfile(Af_path) and os.path.isfile(Ax_path):
-            Af = np.load(Af_path)
-            Ax = np.load(Ax_path)
-            from metrics import nondominated_mask
-            mask = nondominated_mask(Af)
-            pf_f = Af[mask][:500]
-            pf_x = Ax[mask][:500]
-            for i in range(len(pf_f)):
-                lat, lon = local2wgs(pf_x[i, 0], pf_x[i, 1])
-                pf_data.append({
-                    "x_local": float(pf_x[i, 0]), "y_local": float(pf_x[i, 1]),
-                    "lat": float(lat), "lon": float(lon),
-                    "f1": float(pf_f[i, 0]), "f2": float(pf_f[i, 1]), "f3": float(pf_f[i, 2]),
-                })
-
-        return {
-            "label": label,
-            "pricing": pricing,
-            "hv": results["summary"]["hv"]["mean"],
-            "igd": results["summary"]["igd"]["mean"],
-            "archive_size": results["runs"][0]["archive_size"],
-            "f1_range": [results["summary"]["f1_min"]["mean"],
-                         results["summary"]["f1_max"]["mean"]],
-            "f2_range": [results["summary"]["f2_min"]["mean"],
-                         results["summary"]["f2_max"]["mean"]],
-            "f3_range": [results["summary"]["f3_min"]["mean"],
-                         results["summary"]["f3_max"]["mean"]],
-            "pareto": pf_data,
-        }
-
-    a_data = _load_exp(a_dir, "A")
-    b_data = _load_exp(b_dir, "B")
-
-    return jsonify({"A": a_data, "B": b_data})
 
 
 # ---------------------------------------------------------------------------

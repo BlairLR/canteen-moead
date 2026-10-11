@@ -25,7 +25,9 @@ def _run_script(rel_path: str):
     py = sys.executable
     script = os.path.join(HERE, rel_path)
     print(f"\n>>> python {rel_path}")
-    r = subprocess.run([py, script], cwd=HERE)
+    env = os.environ.copy()
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    r = subprocess.run([py, script], cwd=HERE, env=env)
     if r.returncode != 0:
         sys.exit(f"{rel_path} 异常退出 (code={r.returncode})")
 

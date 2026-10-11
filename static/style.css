@@ -433,24 +433,6 @@ body {
 }
 .detail-panel th { text-align: center; background: var(--bg); }
 
-/* ===== 实验比较 ===== */
-.compare-header {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.compare-card {
-  flex: 1;
-  padding: 8px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-}
-.compare-card h5 { font-size: 14px; margin-bottom: 4px; }
-.compare-card .price-row {
-  font-size: 12px;
-  color: #555;
-}
-
 /* ===== 错误提示 ===== */
 .error-toast {
   position: fixed;

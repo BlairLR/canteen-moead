@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """南湖版选址实验（单次运行）：阶段0 采样 + MOEA/D 1×200（A3 多边形搜索空间）。
 
-数据 provenance（写入结果与报告时必须区分）：
-  [真实数据 real]         21 点位坐标（4 竞争 + 10 宿舍 + 7 教学，WGS-84，上层收口）+ A3 边界多边形（用户批准）
-  [临时假设 provisional]  f3 合成成本场（决定 B2）
+数据 provenance：
+  [真实数据 real]         21 点位坐标（4 竞争 + 10 宿舍 + 7 教学，WGS-84）+ A3 边界多边形
 
 约束机制（moead/ 核心零改动）：
   - 阶段0/参考前沿采样：src.nanhu_campus.sample_in_polygon（拒绝法直接生成
@@ -194,7 +193,6 @@ def run_experiment(evaluate_fn=None, out_dir=None, model=None):
             "bounds_x": list(nonlocal_model.bounds_x), "bounds_y": list(nonlocal_model.bounds_y),
             "n_polygon_vertices": int(len(nonlocal_model.polygon_local)),
             "demand_ids": nonlocal_model.demand_ids, "competition_ids": nonlocal_model.competition_ids,
-            "cost_hotspots_local": [list(h) for h in nonlocal_model.cost_hotspots],
             "penalty_caps": [float(c) for c in caps] if caps is not None else None,
         },
         "stage0": s0,
